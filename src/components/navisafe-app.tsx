@@ -20,8 +20,8 @@ export default function NaviSafeApp() {
   const [startLocation, setStartLocation] = useState('');
   const [endLocation, setEndLocation] = useState('');
   const [safetyBriefing, setSafetyBriefing] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isMapLoading, setMapIsLoading] = useState(false);
+  const [isAppLoading, setIsAppLoading] = useState(false);
+  const [isMapLoading, setIsMapLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const { toast } = useToast();
 
@@ -34,24 +34,24 @@ export default function NaviSafeApp() {
     
     setError('');
     setSafetyBriefing(null);
-    setIsLoading(true); // Set loading state for the whole app
+    setIsAppLoading(true);
     setStartLocation(startInput);
     setEndLocation(endInput);
   };
   
   const isWarning = safetyBriefing && (safetyBriefing.includes("Caution") || safetyBriefing.includes("passes near"));
-  const isSearching = isLoading || isMapLoading;
+  const isSearching = isAppLoading || isMapLoading;
 
   const handleMapLoading = (loading: boolean) => {
-    setMapIsLoading(loading);
+    setIsMapLoading(loading);
     if (!loading) {
-      setIsLoading(false); // Turn off main loader when map is done
+      setIsAppLoading(false);
     }
   }
 
   return (
     <div className="relative h-screen w-screen font-body">
-      {isSearching && (
+       {isSearching && (
         <div className="absolute inset-0 bg-background/50 flex items-center justify-center z-20">
           <div className="flex items-center gap-2 text-muted-foreground p-4 bg-background rounded-md shadow-lg">
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
