@@ -1,0 +1,45 @@
+diff --git a/node_modules/react-leaflet/lib/MapContainer.js b/node_modules/react-leaflet/lib/MapContainer.js
+index 45b85a1..5132924 100644
+--- a/node_modules/react-leaflet/lib/MapContainer.js
++++ b/node_modules/react-leaflet/lib/MapContainer.js
+@@ -1,5 +1,5 @@
+ 'use client';
+-import { useEffect, useCallback, useMemo, useRef, useState } from 'react';
++import { useEffect, useCallback, useMemo, useRef, useState, useId } from 'react';
+ import { LeafletProvider, useLeafletContext } from './context.js';
+ import { CONTEXT_VERSION } from './version.js';
+ function _getOptions(props) {
+@@ -21,7 +21,7 @@ export function MapContainer(props) {
+     const { center , zoom , bounds , boundsOptions , ...options } = _getOptions(props);
+     const [map, setMap] = useState(null);
+     const containerRef = useCallback((node)=>{
+-        if (node !== null && map === null) {
++        if (node !== null && map === null) { 
+             const newMap = new Leaflet.Map(node, options);
+             setMap(newMap);
+         }
+@@ -32,7 +32,7 @@ export function MapContainer(props) {
+             setMap(null);
+         };
+     }, []);
+-    const id = props.id == null ? undefined : props.id;
++    const id = props.id == null ? useId() : props.id;
+     const style = props.style == null ? {
+         height: '100%'
+     } : props.style;
+diff --git a/node_modules/react-leaflet/package.json b/node_modules/react-leaflet/package.json
+index 38b0fb6..b02444c 100644
+--- a/node_modules/react-leaflet/package.json
++++ b/node_modules/react-leaflet/package.json
+@@ -37,7 +37,7 @@
+     "rollup": "^2.79.1"
+   },
+   "peerDependencies": {
+-    "leaflet": "^1.7.1",
+-    "react": "^18.0.0",
+-    "react-dom": "^18.0.0"
++    "leaflet": ">=1.7.1",
++    "react": ">=18.0.0",
++    "react-dom": ">=18.0.0"
+   }
+ }
