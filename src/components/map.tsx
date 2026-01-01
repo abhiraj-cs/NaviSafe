@@ -6,7 +6,7 @@ import 'leaflet-defaulticon-compatibility';
 import { MapContainer, TileLayer, Polyline, Marker, CircleMarker, Popup, useMap } from 'react-leaflet';
 import type { LatLngBoundsExpression, LatLngExpression } from 'leaflet';
 import type { BlackSpot } from '@/lib/data';
-import { useEffect } from 'react';
+import { useEffect, memo } from 'react';
 
 type MapProps = {
   center: LatLngExpression;
@@ -31,7 +31,7 @@ const ChangeView = ({ route, start, end }: { route: LatLngExpression[] | null, s
   return null;
 };
 
-export default function Map({ center, zoom, blackSpots, route, start, end }: MapProps) {
+function MapComponent({ center, zoom, blackSpots, route, start, end }: MapProps) {
   return (
     <MapContainer center={center} zoom={zoom} scrollWheelZoom={true} className="h-full w-full z-0">
       <TileLayer
@@ -66,3 +66,5 @@ export default function Map({ center, zoom, blackSpots, route, start, end }: Map
     </MapContainer>
   );
 }
+
+export default memo(MapComponent);
