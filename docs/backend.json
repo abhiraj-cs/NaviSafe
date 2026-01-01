@@ -1,0 +1,72 @@
+{
+  "entities": {
+    "BlackSpot": {
+      "title": "Black Spot",
+      "description": "Represents an accident-prone area.",
+      "type": "object",
+      "properties": {
+        "lat": {
+          "type": "number",
+          "description": "The latitude of the black spot."
+        },
+        "lng": {
+          "type": "number",
+          "description": "The longitude of the black spot."
+        },
+        "risk_level": {
+          "type": "string",
+          "enum": ["High", "Medium"],
+          "description": "The risk level associated with the black spot."
+        },
+        "accident_history": {
+          "type": "string",
+          "description": "A brief description of the accident history."
+        }
+      },
+      "required": ["lat", "lng", "risk_level", "accident_history"]
+    },
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Represents a user's profile in the system.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "The user's unique ID from Firebase Authentication."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The user's email address."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "The user's display name."
+        },
+        "role": {
+          "type": "string",
+          "enum": ["user", "admin"],
+          "description": "The role of the user."
+        }
+      },
+      "required": ["uid", "email"]
+    }
+  },
+  "auth": {
+    "providers": ["password", "google.com"]
+  },
+  "firestore": {
+    "/black_spots/{spotId}": {
+      "schema": {
+        "$ref": "#/entities/BlackSpot"
+      },
+      "description": "Collection of all accident-prone areas (black spots)."
+    },
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/UserProfile"
+      },
+      "description": "Collection of user profiles."
+    }
+  }
+}

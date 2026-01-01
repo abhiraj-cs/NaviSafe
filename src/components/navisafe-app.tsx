@@ -31,12 +31,9 @@ import {
   MapPin,
   User,
   LogOut,
-  Sun,
-  Moon,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { BlackSpot, blackSpots as initialBlackSpots } from '@/lib/data';
-import { useUser } from '@/firebase';
+import { useCollection, useUser } from '@/firebase';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -47,6 +44,8 @@ import {
 } from './ui/dropdown-menu';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import { ThemeToggle } from './theme-toggle';
+import { collection, addDoc } from 'firebase/firestore';
+import { BlackSpot } from '@/lib/data';
 
 // Dynamically import the map to ensure it's client-side only
 const MapComponent = dynamic(() => import('@/components/map'), {
@@ -62,7 +61,11 @@ const MapComponent = dynamic(() => import('@/components/map'), {
 type NewSpotInfo = { lat: number; lng: number } | null;
 
 export default function NaviSafeApp() {
-  const { user, auth } = useUser();
+  const { user, auth, db } = useUser();
+  const { data: blackSpots, loading: blackSpotsLoading } = useCollection<BlackSpot>(
+    db ? collection(db, 'black_spots') : null
+  );
+  
   const [startInput, setStartInput] = useState('Alappuzha');
   const [endInput, setEndInput] = useState('Pathanamthitta');
 
@@ -72,7 +75,6 @@ export default function NaviSafeApp() {
   const [isSearching, setIsSearching] = useState(false);
   const { toast } = useToast();
 
-  const [blackSpots, setBlackSpots] = useState<BlackSpot[]>(initialBlackSpots);
   const [isAddMode, setIsAddMode] = useState(false);
   const [newSpotInfo, setNewSpotInfo] = useState<NewSpotInfo>(null);
   const [newSpotRisk, setNewSpotRisk] = useState<'High' | 'Medium'>('Medium');
@@ -100,8 +102,8 @@ export default function NaviSafeApp() {
     }
   };
 
-  const handleSaveNewSpot = () => {
-    if (!newSpotInfo || !newSpotDescription.trim()) {
+  const handleSaveNewSpot = async () => {
+    if (!newSpotInfo || !newSpotDescription.trim() || !db) {
       toast({
         variant: 'destructive',
         title: 'Incomplete Information',
@@ -111,19 +113,27 @@ export default function NaviSafeApp() {
       return;
     }
 
-    const newSpot: BlackSpot = {
-      id: `bs-${Date.now()}`,
+    const newSpot: Omit<BlackSpot, 'id'> = {
       lat: newSpotInfo.lat,
       lng: newSpotInfo.lng,
       risk_level: newSpotRisk,
       accident_history: newSpotDescription,
     };
 
-    setBlackSpots(prev => [...prev, newSpot]);
-    toast({
-      title: 'Black Spot Added',
-      description: 'The new accident-prone area has been added to the map.',
-    });
+    try {
+      await addDoc(collection(db, 'black_spots'), newSpot);
+      toast({
+        title: 'Black Spot Added',
+        description: 'The new accident-prone area has been added to the map.',
+      });
+    } catch (error: any) {
+       toast({
+        variant: 'destructive',
+        title: 'Failed to Add Spot',
+        description: error.message || 'You may not have permission to perform this action.',
+      });
+    }
+
 
     setNewSpotInfo(null);
     setNewSpotDescription('');
@@ -283,7 +293,7 @@ export default function NaviSafeApp() {
                 <Button
                   type="submit"
                   className="w-full bg-blue-600 hover:bg-blue-700 transition-colors"
-                  disabled={isSearching}
+                  disabled={isSearching || blackSpotsLoading}
                 >
                   {isSearching ? (
                     <>
@@ -370,7 +380,7 @@ export default function NaviSafeApp() {
         <MapComponent
           startLocation={activeRoute.start}
           endLocation={activeRoute.end}
-          blackSpots={blackSpots}
+          blackSpots={blackSpots || []}
           onMapClick={handleMapClick}
           onSafetyBriefing={setSafetyBriefing}
           onMapError={message => {
