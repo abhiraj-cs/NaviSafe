@@ -65,8 +65,8 @@ export default function NaviSafeApp() {
     db ? collection(db, 'black_spots') : null
   );
   
-  const [startInput, setStartInput] = useState('Alappuzha');
-  const [endInput, setEndInput] = useState('Pathanamthitta');
+  const [startInput, setStartInput] = useState('');
+  const [endInput, setEndInput] = useState('');
   const [currentLocation, setCurrentLocation] = useState<CurrentLocation>(null);
 
   const [activeRoute, setActiveRoute] = useState<{ start: string | { lat: number, lng: number }, end: string }>({ start: '', end: '' });
