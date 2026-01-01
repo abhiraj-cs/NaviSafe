@@ -31,7 +31,7 @@ import {
   MapPin,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useCollection } from '@/firebase';
+import { useCollection, useUser } from '@/firebase';
 import { ThemeToggle } from './theme-toggle';
 import { collection, addDoc } from 'firebase/firestore';
 import { BlackSpot } from '@/lib/data';
