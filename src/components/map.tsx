@@ -41,8 +41,6 @@ function MapComponent({ startLocation, endLocation, onSafetyBriefing, onMapError
   const [endCoords, setEndCoords] = useState<[number, number] | null>(null);
   const [isMapReady, setIsMapReady] = useState(false);
   
-  const mapRef = useRef<L.Map | null>(null);
-  const mapContainerRef = useRef<HTMLDivElement>(null);
   const geoProviderRef = useRef<OpenStreetMapProvider | null>(null);
   
   if (!geoProviderRef.current) {
@@ -50,9 +48,8 @@ function MapComponent({ startLocation, endLocation, onSafetyBriefing, onMapError
   }
 
   useEffect(() => {
-    if (mapContainerRef.current && !mapRef.current) {
-       setIsMapReady(true);
-    }
+    // This effect ensures we only try to render the map on the client
+    setIsMapReady(true);
   }, []);
 
   useEffect(() => {
@@ -131,13 +128,13 @@ function MapComponent({ startLocation, endLocation, onSafetyBriefing, onMapError
         setBounds(L.latLngBounds([9.0, 76.2], [9.7, 77.0]));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [startLocation, endLocation, onSafetyBriefing, onMapError, onLoading]);
+  }, [startLocation, endLocation]);
   
   const startMarker = startCoords ? (startCoords as LatLngExpression) : null;
   const endMarker = endCoords ? (endCoords as LatLngExpression) : null;
 
   return (
-    <div ref={mapContainerRef} className="h-full w-full z-0">
+    <div className="h-full w-full z-0">
       {!isMapReady ? (
         <div className="h-full w-full bg-muted flex items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -148,7 +145,6 @@ function MapComponent({ startLocation, endLocation, onSafetyBriefing, onMapError
             zoom={9}
             scrollWheelZoom={true}
             className="h-full w-full"
-            whenCreated={map => { mapRef.current = map; }}
         >
             <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
