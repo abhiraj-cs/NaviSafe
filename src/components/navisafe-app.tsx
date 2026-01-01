@@ -29,6 +29,10 @@ import {
   PlusCircle,
   MapPin,
   Crosshair,
+  Car,
+  Bike,
+  Clock,
+  Milestone,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useCollection } from '@/firebase/firestore/use-collection';
@@ -50,6 +54,9 @@ const MapComponent = dynamic(() => import('@/components/map'), {
 
 type NewSpotInfo = { lat: number; lng: number } | null;
 type CurrentLocation = { lat: number; lng: number } | null;
+type RouteDetails = { distance: number; duration: number } | null;
+export type TravelMode = 'car' | 'bike';
+
 
 export default function NaviSafeApp() {
   const { db } = useFirebase();
@@ -64,6 +71,8 @@ export default function NaviSafeApp() {
   const [activeRoute, setActiveRoute] = useState<{ start: string | { lat: number, lng: number }, end: string }>({ start: '', end: '' });
 
   const [safetyBriefing, setSafetyBriefing] = useState<string | null>(null);
+  const [routeDetails, setRouteDetails] = useState<RouteDetails>(null);
+  const [travelMode, setTravelMode] = useState<TravelMode>('car');
   const [isSearching, setIsSearching] = useState(false);
   const { toast } = useToast();
 
@@ -91,6 +100,7 @@ export default function NaviSafeApp() {
     }
 
     setSafetyBriefing(null);
+    setRouteDetails(null);
     setActiveRoute({ start: startValue, end: endInput });
   };
 
@@ -182,6 +192,11 @@ export default function NaviSafeApp() {
       safetyBriefing.toLowerCase().includes('high risk') ||
       safetyBriefing.toLowerCase().includes('danger'));
 
+  const formatDuration = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    return `${hours > 0 ? `${hours}h ` : ''}${minutes}min`;
+  };
 
   return (
     <div className="flex flex-col md:flex-row h-screen w-screen bg-slate-50 dark:bg-slate-900 overflow-hidden font-sans">
@@ -267,6 +282,26 @@ export default function NaviSafeApp() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSearch} className="space-y-4">
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    type="button"
+                    variant={travelMode === 'car' ? 'secondary' : 'ghost'}
+                    onClick={() => setTravelMode('car')}
+                    className="dark:data-[state=active]:bg-slate-700"
+                  >
+                    <Car className="mr-2 h-4 w-4" />
+                    Car
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={travelMode === 'bike' ? 'secondary' : 'ghost'}
+                    onClick={() => setTravelMode('bike')}
+                    className="dark:data-[state=active]:bg-slate-700"
+                  >
+                    <Bike className="mr-2 h-4 w-4" />
+                    Bike
+                  </Button>
+                </div>
                 <div className="space-y-3">
                   <div className="relative flex items-center gap-2">
                     <div className="absolute left-3 top-2.5 h-4 w-4 rounded-full border-2 border-slate-400 dark:border-slate-600" />
@@ -350,6 +385,26 @@ export default function NaviSafeApp() {
               </CardContent>
             </Card>
           
+          {/* Route Details */}
+          {routeDetails && !isSearching && (
+             <Card className="border-blue-200 dark:border-blue-800/50 bg-blue-50 dark:bg-blue-900/20">
+                <CardHeader>
+                  <CardTitle className="text-base text-blue-800 dark:text-blue-300">Route Details</CardTitle>
+                </CardHeader>
+                <CardContent className="flex justify-around items-center text-center">
+                  <div className="flex flex-col items-center gap-1">
+                    <Milestone className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                    <p className="font-bold text-lg">{(routeDetails.distance / 1000).toFixed(1)}</p>
+                    <p className="text-xs text-slate-600 dark:text-slate-400">km</p>
+                  </div>
+                  <div className="flex flex-col items-center gap-1">
+                    <Clock className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                    <p className="font-bold text-lg">{formatDuration(routeDetails.duration)}</p>
+                    <p className="text-xs text-slate-600 dark:text-slate-400">Est. Time</p>
+                  </div>
+                </CardContent>
+              </Card>
+          )}
 
           {/* Safety Briefing Result */}
           {safetyBriefing && !isSearching && (
@@ -393,8 +448,10 @@ export default function NaviSafeApp() {
           startLocation={activeRoute.start}
           endLocation={activeRoute.end}
           blackSpots={blackSpots || []}
+          travelMode={travelMode}
           onMapClick={handleMapClick}
           onSafetyBriefing={setSafetyBriefing}
+          onRouteDetails={setRouteDetails}
           onMapError={message => {
             toast({
               variant: 'destructive',

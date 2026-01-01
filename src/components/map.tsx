@@ -10,6 +10,7 @@ import { OpenStreetMapProvider } from 'leaflet-geosearch';
 import { BlackSpot } from '@/lib/data';
 import { getSafetyBriefing } from '@/lib/actions';
 import { haversineDistance } from '@/lib/utils';
+import { TravelMode } from './navisafe-app';
 
 const COLLISION_THRESHOLD = 500; 
 
@@ -17,8 +18,10 @@ type MapProps = {
   startLocation: string | { lat: number; lng: number };
   endLocation: string;
   blackSpots: BlackSpot[];
+  travelMode: TravelMode;
   locateUser: boolean;
   onSafetyBriefing: (briefing: string | null) => void;
+  onRouteDetails: (details: { distance: number, duration: number } | null) => void;
   onMapError: (message: string) => void;
   onLoading: (loading: boolean) => void;
   onMapClick: (latlng: { lat: number, lng: number }) => void;
@@ -28,8 +31,10 @@ const MapComponent = ({
   startLocation, 
   endLocation, 
   blackSpots,
+  travelMode,
   locateUser,
   onSafetyBriefing, 
+  onRouteDetails,
   onMapError,
   onLoading,
   onMapClick
@@ -133,6 +138,7 @@ const MapComponent = ({
       
       onLoading(true);
       onSafetyBriefing(null);
+      onRouteDetails(null);
       onMapError("");
 
       // Clear previous route layers
@@ -158,17 +164,24 @@ const MapComponent = ({
 
         const sCoords: [number, number] = [startRes[0].y, startRes[0].x];
         const eCoords: [number, number] = [endRes[0].y, endRes[0].x];
+        
+        // Use the correct OSRM profile based on travel mode
+        const profile = travelMode === 'car' ? 'driving' : 'biking';
 
         // Fetch route from OSRM
-        const url = `https://router.project-osrm.org/route/v1/driving/${sCoords[1]},${sCoords[0]};${eCoords[1]},${eCoords[0]}?geometries=geojson`;
+        const url = `https://router.project-osrm.org/route/v1/${profile}/${sCoords[1]},${sCoords[0]};${eCoords[1]},${eCoords[0]}?geometries=geojson`;
         const res = await fetch(url);
         const json = await res.json();
 
         if (!json.routes || !json.routes.length) {
           throw new Error("No route could be found between the locations.");
         }
+        
+        const route = json.routes[0];
+        const coordinates = route.geometry.coordinates.map((c: number[]) => [c[1], c[0]] as [number, number]);
 
-        const coordinates = json.routes[0].geometry.coordinates.map((c: number[]) => [c[1], c[0]] as [number, number]);
+        // Pass details up to the parent component
+        onRouteDetails({ distance: route.distance, duration: route.duration });
         
         // Add new route polyline
         routeLayer.current = L.polyline(coordinates, { color: '#3b82f6', weight: 6 }).addTo(leafletMap.current);
@@ -205,7 +218,7 @@ const MapComponent = ({
 
     fetchRoute();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [startLocation, endLocation, blackSpots]); // Re-run if blackspots change to update briefing
+  }, [startLocation, endLocation, blackSpots, travelMode]); // Re-run if travelMode changes
 
   return <div ref={mapRef} className="h-full w-full z-0" />;
 };
