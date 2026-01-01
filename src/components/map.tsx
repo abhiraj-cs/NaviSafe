@@ -41,6 +41,7 @@ function MapComponent({ startLocation, endLocation, onSafetyBriefing, onMapError
   const [endCoords, setEndCoords] = useState<[number, number] | null>(null);
   const [isMapReady, setIsMapReady] = useState(false);
   
+  const mapRef = useRef<L.Map | null>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const geoProviderRef = useRef<OpenStreetMapProvider | null>(null);
   
@@ -49,8 +50,7 @@ function MapComponent({ startLocation, endLocation, onSafetyBriefing, onMapError
   }
 
   useEffect(() => {
-    // This effect ensures map is only rendered on the client and only once.
-    if (mapContainerRef.current && !mapContainerRef.current.hasChildNodes()) {
+    if (mapContainerRef.current && !mapRef.current) {
        setIsMapReady(true);
     }
   }, []);
@@ -92,7 +92,7 @@ function MapComponent({ startLocation, endLocation, onSafetyBriefing, onMapError
 
             const routeGeometry = data.routes[0].geometry.coordinates.map((c: [number, number]) => [c[1], c[0]]);
             setRoute(routeGeometry);
-            setBounds(routeGeometry as LatLngBoundsExpression);
+            setBounds(L.latLngBounds(routeGeometry));
 
             // Collision detection
             const routePoints = routeGeometry.map((p: [number, number]) => ({ lat: p[0], lon: p[1] }));
@@ -117,7 +117,7 @@ function MapComponent({ startLocation, endLocation, onSafetyBriefing, onMapError
             // If route fails, just show markers if they exist
             const newBounds = [startCoords, endCoords].filter(Boolean) as LatLngExpression[];
             if (newBounds.length > 0) {
-                setBounds(newBounds as LatLngBoundsExpression);
+              setBounds(L.latLngBounds(newBounds));
             }
         } finally {
             onLoading(false);
@@ -127,8 +127,8 @@ function MapComponent({ startLocation, endLocation, onSafetyBriefing, onMapError
     if (startLocation && endLocation) {
         geocodeAndFetch();
     } else {
-        // Set default view if no coords
-        setBounds([[51.505, -0.09], [51.515, -0.08]]);
+        // Default view for Alappuzha and Pathanamthitta
+        setBounds(L.latLngBounds([9.0, 76.2], [9.7, 77.0]));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startLocation, endLocation, onSafetyBriefing, onMapError, onLoading]);
@@ -144,10 +144,11 @@ function MapComponent({ startLocation, endLocation, onSafetyBriefing, onMapError
         </div>
       ) : (
         <MapContainer
-            center={[51.505, -0.09]} // Default center, will be overridden by ChangeView
-            zoom={12}
+            center={[9.35, 76.6]} // Center between Alappuzha and Pathanamthitta
+            zoom={9}
             scrollWheelZoom={true}
             className="h-full w-full"
+            whenCreated={map => { mapRef.current = map; }}
         >
             <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'

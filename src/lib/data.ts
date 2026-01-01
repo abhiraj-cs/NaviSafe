@@ -6,55 +6,41 @@ export type BlackSpot = {
   accident_history: string;
 };
 
-// Dummy data for London, UK
+// Dummy data for Alappuzha and Pathanamthitta districts, Kerala, India
 export const blackSpots: BlackSpot[] = [
   {
     id: 'bs-1',
-    lat: 51.509865,
-    lng: -0.118092,
+    lat: 9.503,
+    lng: 76.33,
     risk_level: 'High',
-    accident_history: 'Frequent rear-end collisions during peak hours at Waterloo Bridge.',
+    accident_history: 'Frequent collisions on the NH66 bypass near Alappuzha beach junction.',
   },
   {
     id: 'bs-2',
-    lat: 51.51279,
-    lng: -0.09099,
+    lat: 9.266,
+    lng: 76.78,
     risk_level: 'Medium',
-    accident_history: 'Several incidents involving cyclists and turning vehicles near St. Paul\'s Cathedral.',
+    accident_history: 'Several incidents involving two-wheelers on the main central road in Pathanamthitta town.',
   },
   {
     id: 'bs-3',
-    lat: 51.507351,
-    lng: -0.08233,
+    lat: 9.15,
+    lng: 76.52,
     risk_level: 'High',
-    accident_history: 'High number of pedestrian-related accidents at the Tower Bridge crossing.',
+    accident_history: 'High number of accidents on the Kayamkulam-Punalur road due to sharp turns.',
   },
   {
     id: 'bs-4',
-    lat: 51.5194,
-    lng: -0.1269,
+    lat: 9.35,
+    lng: 76.52,
     risk_level: 'Medium',
-    accident_history: 'Known for sideswipe accidents due to narrow lanes around Covent Garden.',
+    accident_history: 'Known for sideswipe accidents due to narrow lanes around Chengannur.',
   },
   {
     id: 'bs-5',
-    lat: 51.4993,
-    lng: -0.1428,
+    lat: 9.2,
+    lng: 76.6,
     risk_level: 'High',
-    accident_history: 'Major roundabout at Hyde Park Corner with complex merging, leading to frequent incidents.',
-  },
-  {
-    id: 'bs-6',
-    lat: 51.501,
-    lng: -0.142,
-    risk_level: 'Medium',
-    accident_history: 'Junction near Buckingham Palace with high tourist footfall and vehicle congestion.',
-  },
-  {
-    id: 'bs-7',
-    lat: 51.515,
-    lng: -0.142,
-    risk_level: 'High',
-    accident_history: 'Oxford Circus intersection is one of the busiest in London, with many pedestrian incidents.',
+    accident_history: 'Complex junction near Pandalam with frequent traffic violations.',
   },
 ];

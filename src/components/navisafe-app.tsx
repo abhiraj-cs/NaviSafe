@@ -72,13 +72,13 @@ export default function NaviSafeApp() {
             <form onSubmit={handleSearch} className="space-y-4">
               <div className="space-y-2">
                 <Input
-                  placeholder="Start Location (e.g., 'Waterloo, London')"
+                  placeholder="Start (e.g., 'Alappuzha, Kerala')"
                   value={startInput}
                   onChange={(e) => setStartInput(e.target.value)}
                   disabled={isSearching}
                 />
                 <Input
-                  placeholder="End Location (e.g., 'Canary Wharf, London')"
+                  placeholder="End (e.g., 'Pathanamthitta, Kerala')"
                   value={endInput}
                   onChange={(e) => setEndInput(e.target.value)}
                   disabled={isSearching}
