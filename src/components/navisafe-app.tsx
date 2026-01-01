@@ -21,8 +21,7 @@ export default function NaviSafeApp() {
   const [startLocation, setStartLocation] = useState('');
   const [endLocation, setEndLocation] = useState('');
   const [safetyBriefing, setSafetyBriefing] = useState<string | null>(null);
-  const [isAppLoading, setIsAppLoading] = useState(false);
-  const [isMapLoading, setIsMapLoading] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState<string>('');
   const { toast } = useToast();
 
@@ -35,20 +34,11 @@ export default function NaviSafeApp() {
     
     setError('');
     setSafetyBriefing(null);
-    setIsAppLoading(true);
     setStartLocation(startInput);
     setEndLocation(endInput);
   };
   
   const isWarning = safetyBriefing && (safetyBriefing.includes("Caution") || safetyBriefing.includes("passes near"));
-  const isSearching = isAppLoading || isMapLoading;
-
-  const handleMapLoading = (loading: boolean) => {
-    setIsMapLoading(loading);
-    if (!loading) {
-      setIsAppLoading(false);
-    }
-  }
 
   return (
     <div className="relative h-screen w-screen font-body">
@@ -67,7 +57,7 @@ export default function NaviSafeApp() {
         onMapError={(message) => {
             toast({ variant: 'destructive', title: 'Map Error', description: message });
         }}
-        onLoading={handleMapLoading}
+        onLoading={setIsSearching}
       />
       <div className="absolute top-4 left-4 right-4 md:left-4 md:right-auto md:w-full md:max-w-sm z-10">
         <Card className="shadow-2xl bg-card/90 backdrop-blur-sm">
@@ -100,7 +90,7 @@ export default function NaviSafeApp() {
               </Button>
             </form>
 
-            {safetyBriefing && (
+            {safetyBriefing && !isSearching && (
               <div className="mt-4">
                   <Alert variant={isWarning ? "destructive" : "default"}>
                     {isWarning ? <ShieldAlert className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4 text-primary" />}

@@ -10,7 +10,6 @@ import { MapContainer, TileLayer, Polyline, Marker, CircleMarker, Popup, useMap 
 import { blackSpots, type BlackSpot } from '@/lib/data';
 import { getSafetyBriefing } from '@/lib/actions';
 import { haversineDistance } from '@/lib/utils';
-import { Loader2 } from 'lucide-react';
 import { OpenStreetMapProvider } from 'leaflet-geosearch';
 
 const COLLISION_THRESHOLD = 50; // meters
@@ -39,7 +38,6 @@ function MapComponent({ startLocation, endLocation, onSafetyBriefing, onMapError
   const [bounds, setBounds] = useState<LatLngBoundsExpression | null>(null);
   const [startCoords, setStartCoords] = useState<[number, number] | null>(null);
   const [endCoords, setEndCoords] = useState<[number, number] | null>(null);
-  const [isMapReady, setIsMapReady] = useState(false);
   
   const geoProviderRef = useRef<OpenStreetMapProvider | null>(null);
   
@@ -48,18 +46,12 @@ function MapComponent({ startLocation, endLocation, onSafetyBriefing, onMapError
   }
 
   useEffect(() => {
-    // This effect ensures we only try to render the map on the client
-    setIsMapReady(true);
-  }, []);
-
-  useEffect(() => {
-    onSafetyBriefing(null);
-
     const geocodeAndFetch = async () => {
         if (!startLocation || !endLocation || !geoProviderRef.current) return;
         
         onLoading(true);
         setRoute(null); // Clear previous route
+        onSafetyBriefing(null);
 
         try {
             const startResults = await geoProviderRef.current.search({ query: startLocation });
@@ -135,11 +127,6 @@ function MapComponent({ startLocation, endLocation, onSafetyBriefing, onMapError
 
   return (
     <div className="h-full w-full z-0">
-      {!isMapReady ? (
-        <div className="h-full w-full bg-muted flex items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      ) : (
         <MapContainer
             center={[9.35, 76.6]} // Center between Alappuzha and Pathanamthitta
             zoom={9}
@@ -176,7 +163,6 @@ function MapComponent({ startLocation, endLocation, onSafetyBriefing, onMapError
 
             <ChangeView bounds={bounds} />
         </MapContainer>
-      )}
     </div>
   );
 }
