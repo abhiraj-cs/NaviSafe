@@ -144,10 +144,16 @@ const MapComponent = ({
   // Handle route search
   useEffect(() => {
     const fetchRoute = async () => {
-      if ((!startLocation && typeof startLocation !== 'object') || !endLocation || !leafletMap.current) {
+      // Do not fetch a route if either location is missing
+      if ((typeof startLocation === 'string' && !startLocation.trim()) || !endLocation.trim()) {
         onRouteDetails(null);
+        if (routeLayer.current && leafletMap.current) leafletMap.current.removeLayer(routeLayer.current);
+        if (startMarker.current && leafletMap.current) leafletMap.current.removeLayer(startMarker.current);
+        if (endMarker.current && leafletMap.current) leafletMap.current.removeLayer(endMarker.current);
         return;
       }
+
+      if (!leafletMap.current) return;
       
       onLoading(true);
       onSafetyBriefing(null);
@@ -231,7 +237,7 @@ const MapComponent = ({
 
     fetchRoute();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [startLocation, endLocation, blackSpots, travelMode]); // Re-run if travelMode changes
+  }, [startLocation, endLocation, travelMode]); // Removed blackspots dependency to avoid re-fetching on DB updates
 
   return <div ref={mapRef} className="h-full w-full z-0" />;
 };

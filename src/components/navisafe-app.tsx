@@ -205,6 +205,7 @@ export default function NaviSafeApp() {
       setRouteDetails(details);
       setIsRoutePlanned(true);
     } else {
+      setRouteDetails(null);
       setIsRoutePlanned(false);
     }
   };
@@ -487,11 +488,13 @@ export default function NaviSafeApp() {
           onSafetyBriefing={setSafetyBriefing}
           onRouteDetails={handleRouteDetails}
           onMapError={message => {
-            toast({
-              variant: 'destructive',
-              title: 'Route Error',
-              description: message,
-            });
+            if (message) {
+              toast({
+                variant: 'destructive',
+                title: 'Route Error',
+                description: message,
+              });
+            }
             setIsRoutePlanned(false);
           }}
           onLoading={setIsSearching}
