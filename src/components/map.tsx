@@ -181,4 +181,4 @@ function MapComponent({ startLocation, endLocation, onSafetyBriefing, onMapError
   );
 }
 
-export default MapComponent;
+export default memo(MapComponent);
