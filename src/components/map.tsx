@@ -326,13 +326,7 @@ const MapComponent = ({
 
     const selectedRoute = routes[selectedRouteIndex];
 
-    // Draw the selected route first, so it's underneath
-    if (selectedRoute) {
-      const coordinates = selectedRoute.geometry.coordinates.map((c: number[]) => [c[1], c[0]] as [number, number]);
-      L.polyline(coordinates, primaryRouteStyle).addTo(routeLayers.current!);
-    }
-
-    // Draw alternative routes on top, so they are clickable
+    // Draw alternative routes first, so the selected one is on top and more prominent
     routes.forEach((route, index) => {
       if (index === selectedRouteIndex) return;
       const coordinates = route.geometry.coordinates.map((c: number[]) => [c[1], c[0]] as [number, number]);
@@ -341,6 +335,12 @@ const MapComponent = ({
         setSelectedRouteIndex(index);
       });
     });
+
+    // Draw the selected route last, so it's on top
+    if (selectedRoute) {
+      const coordinates = selectedRoute.geometry.coordinates.map((c: number[]) => [c[1], c[0]] as [number, number]);
+      L.polyline(coordinates, primaryRouteStyle).addTo(routeLayers.current!);
+    }
     
     if (!selectedRoute) {
       onRouteDetails(null);
