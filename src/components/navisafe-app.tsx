@@ -41,6 +41,8 @@ import { ThemeToggle } from '@/components/theme-toggle';
 import { collection, addDoc } from 'firebase/firestore';
 import { BlackSpot } from '@/lib/data';
 import { useFirebase } from '@/firebase';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 // Dynamically import the map to ensure it's client-side only
 const MapComponent = dynamic(() => import('@/components/map'), {
@@ -162,7 +164,7 @@ export default function NaviSafeApp() {
     }
   };
 
-  const handleSaveNewSpot = async () => {
+  const handleSaveNewSpot = () => {
     if (!newSpotInfo || !newSpotDescription.trim() || !db) {
       toast({
         variant: 'destructive',
@@ -180,21 +182,30 @@ export default function NaviSafeApp() {
       accident_history: newSpotDescription,
     };
 
-    try {
-      await addDoc(collection(db, 'black_spots'), newSpot);
-      toast({
-        title: 'Black Spot Added',
-        description: 'The new accident-prone area has been added to the map.',
+    const blackSpotsCollection = collection(db, 'black_spots');
+
+    // Don't await. Use .catch() to handle errors without blocking the UI.
+    addDoc(blackSpotsCollection, newSpot)
+      .then(() => {
+        toast({
+          title: 'Black Spot Added',
+          description: 'The new accident-prone area has been added to the map.',
+        });
+      })
+      .catch((serverError: any) => {
+        // Create a rich, contextual error for easier debugging.
+        const permissionError = new FirestorePermissionError({
+          path: blackSpotsCollection.path,
+          operation: 'create',
+          requestResourceData: newSpot,
+        });
+        
+        // Emit the error to our central listener.
+        errorEmitter.emit('permission-error', permissionError);
       });
-    } catch (error: any) {
-       toast({
-        variant: 'destructive',
-        title: 'Failed to Add Spot',
-        description: error.message || 'There was a problem saving the new spot.',
-      });
-    }
 
 
+    // Optimistically reset the form UI.
     setNewSpotInfo(null);
     setNewSpotDescription('');
     setNewSpotRisk('Medium');

@@ -5,6 +5,7 @@ import { FirebaseApp, getApp, getApps, initializeApp } from 'firebase/app';
 import { Auth, getAuth } from 'firebase/auth';
 import { Firestore, getFirestore } from 'firebase/firestore';
 import { firebaseConfig } from './config';
+import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 
 // Initialize Firebase app if it hasn't been already
 let app: FirebaseApp;
@@ -33,6 +34,8 @@ const FirebaseContext = createContext<FirebaseContextValue>({
 export function FirebaseProvider({ children }: { children: ReactNode }) {
   return (
     <FirebaseContext.Provider value={{ app, db, auth }}>
+      {/* Only render the error listener in development for debugging */}
+      {process.env.NODE_ENV === 'development' && <FirebaseErrorListener />}
       {children}
     </FirebaseContext.Provider>
   );
