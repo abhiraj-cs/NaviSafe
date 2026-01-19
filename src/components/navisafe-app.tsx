@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -61,8 +61,9 @@ export type TravelMode = 'car' | 'bike';
 
 export default function NaviSafeApp() {
   const { db } = useFirebase();
+  const blackSpotsQuery = useMemo(() => (db ? collection(db, 'black_spots') : null), [db]);
   const { data: blackSpots, loading: blackSpotsLoading } = useCollection<BlackSpot>(
-    db ? collection(db, 'black_spots') : null
+    blackSpotsQuery
   );
   
   const [startInput, setStartInput] = useState('');
