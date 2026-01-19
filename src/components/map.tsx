@@ -14,6 +14,31 @@ import { TravelMode } from './navisafe-app';
 
 const COLLISION_THRESHOLD = 500; 
 
+// Helper function to create custom warning icons for black spots
+const createWarningIcon = (riskLevel: 'High' | 'Medium', reportCount: number) => {
+  const color = riskLevel === 'High' ? '#ef4444' : '#f97316'; // red-500, orange-500
+  const size = 24 + Math.min(reportCount, 5) * 4; // Base size 24, grows up to 44px
+
+  const iconHtml = `
+    <div style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));">
+      <svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" fill="${color}"></path>
+        <path d="M11 9h2v4h-2z" fill="white"></path>
+        <path d="M11 15h2v2h-2z" fill="white"></path>
+      </svg>
+    </div>
+  `;
+
+  return L.divIcon({
+    html: iconHtml,
+    className: '', // Use an empty class name to avoid default Leaflet styles
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size], // Anchor to the bottom-center point of the icon
+    popupAnchor: [0, -size], // Position popup above the icon
+  });
+};
+
+
 type MapProps = {
   startLocation: string | { lat: number; lng: number };
   endLocation: string;
@@ -175,14 +200,9 @@ const MapComponent = ({
     blackSpotsLayer.current.clearLayers();
     
     blackSpots.forEach((spot) => {
-      const color = spot.risk_level === 'High' ? '#ef4444' : '#f97316';
-      const radius = 8 + Math.min(spot.report_count, 10);
-      L.circleMarker([spot.lat, spot.lng], {
-        radius: radius,
-        color: color,
-        fillColor: color,
-        fillOpacity: 0.6,
-      })
+      const icon = createWarningIcon(spot.risk_level, spot.report_count);
+
+      L.marker([spot.lat, spot.lng], { icon })
       .bindPopup(`
         <div class="p-2 text-sm max-w-xs">
           <h3 class="font-bold mb-1 ${spot.risk_level === 'High' ? 'text-red-600' : 'text-orange-600'}">⚠️ ${spot.risk_level} Risk Zone</h3>
