@@ -38,11 +38,12 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useCollection } from '@/firebase/firestore/use-collection';
 import { ThemeToggle } from '@/components/theme-toggle';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc, increment, deleteDoc } from 'firebase/firestore';
 import { BlackSpot } from '@/lib/data';
 import { useFirebase } from '@/firebase';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { haversineDistance } from '@/lib/utils';
 
 // Dynamically import the map to ensure it's client-side only
 const MapComponent = dynamic(() => import('@/components/map'), {
@@ -55,10 +56,12 @@ const MapComponent = dynamic(() => import('@/components/map'), {
   ),
 });
 
+const NEARBY_THRESHOLD = 50; // 50 meters to consider a spot 'nearby'
 type NewSpotInfo = { lat: number; lng: number } | null;
 type CurrentLocation = { lat: number; lng: number } | null;
 type RouteDetails = { distance: number; duration: number } | null;
 export type TravelMode = 'car' | 'bike';
+type SpotToConfirm = BlackSpot | null;
 
 
 export default function NaviSafeApp() {
@@ -83,6 +86,9 @@ export default function NaviSafeApp() {
 
   const [isAddMode, setIsAddMode] = useState(false);
   const [newSpotInfo, setNewSpotInfo] = useState<NewSpotInfo>(null);
+  const [spotToConfirm, setSpotToConfirm] = useState<SpotToConfirm>(null);
+  const [isProcessingSpot, setIsProcessingSpot] = useState(false);
+
   const [newSpotRisk, setNewSpotRisk] = useState<'High' | 'Medium'>('Medium');
   const [newSpotDescription, setNewSpotDescription] = useState('');
   const [locateUser, setLocateUser] = useState(false);
@@ -121,9 +127,51 @@ export default function NaviSafeApp() {
      setTimeout(() => setStartNavigation(false), 500);
   };
 
-  const handleMapClick = (latlng: { lat: number; lng: number }) => {
-    if (isAddMode) {
-      setNewSpotInfo(latlng);
+  const handleMapClick = async (latlng: { lat: number; lng: number }) => {
+    if (!isAddMode || isProcessingSpot) return;
+
+    setIsProcessingSpot(true);
+    toast({
+      title: 'Verifying Location...',
+      description: 'Snapping to the nearest road and checking for nearby spots.',
+    });
+
+    try {
+      // 1. Snap to nearest road using OSRM
+      const osrmUrl = `https://router.project-osrm.org/nearest/v1/driving/${latlng.lng},${latlng.lat}`;
+      const osrmRes = await fetch(osrmUrl);
+      const osrmJson = await osrmRes.json();
+
+      if (osrmJson.code !== 'Ok' || !osrmJson.waypoints || osrmJson.waypoints.length === 0) {
+        throw new Error('Could not find a road near this location.');
+      }
+      
+      const snappedCoords = osrmJson.waypoints[0].location;
+      const snappedLat = snappedCoords[1];
+      const snappedLng = snappedCoords[0];
+
+      // 2. Check for nearby existing black spots
+      const nearbySpot = blackSpots?.find(spot => {
+        const distance = haversineDistance({ lat: spot.lat, lon: spot.lng }, { lat: snappedLat, lon: snappedLng });
+        return distance < NEARBY_THRESHOLD;
+      });
+
+      if (nearbySpot) {
+        // 3a. If nearby spot found, ask for confirmation to increment
+        setSpotToConfirm(nearbySpot);
+      } else {
+        // 3b. If no nearby spot, open the 'add new' dialog
+        setNewSpotInfo({ lat: snappedLat, lng: snappedLng });
+      }
+
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'Could Not Add Spot',
+        description: error.message || 'An error occurred while processing the location.',
+      });
+    } finally {
+      setIsProcessingSpot(false);
     }
   };
 
@@ -136,13 +184,12 @@ export default function NaviSafeApp() {
           const userLocation = { lat: latitude, lng: longitude };
           setCurrentLocation(userLocation);
           setStartInput('My Current Location');
-          setLocateUser(true); // Triggers map to locate user
+          setLocateUser(true);
           setIsSearching(false);
           toast({
             title: 'Location Found',
             description: "Your current location has been set as the starting point.",
           });
-          // Reset locateUser after a short delay so it can be triggered again
           setTimeout(() => setLocateUser(false), 500);
         },
         (error) => {
@@ -180,11 +227,11 @@ export default function NaviSafeApp() {
       lng: newSpotInfo.lng,
       risk_level: newSpotRisk,
       accident_history: newSpotDescription,
+      report_count: 1,
     };
 
     const blackSpotsCollection = collection(db, 'black_spots');
 
-    // Don't await. Use .catch() to handle errors without blocking the UI.
     addDoc(blackSpotsCollection, newSpot)
       .then(() => {
         toast({
@@ -193,25 +240,65 @@ export default function NaviSafeApp() {
         });
       })
       .catch((serverError: any) => {
-        // Create a rich, contextual error for easier debugging.
         const permissionError = new FirestorePermissionError({
           path: blackSpotsCollection.path,
           operation: 'create',
           requestResourceData: newSpot,
         });
-        
-        // Emit the error to our central listener.
         errorEmitter.emit('permission-error', permissionError);
       });
 
-
-    // Optimistically reset the form UI.
     setNewSpotInfo(null);
     setNewSpotDescription('');
     setNewSpotRisk('Medium');
     setIsAddMode(false);
   };
   
+  const handleConfirmIncrement = () => {
+    if (!spotToConfirm || !db) return;
+
+    const spotRef = doc(db, 'black_spots', spotToConfirm.id);
+    updateDoc(spotRef, {
+      report_count: increment(1)
+    })
+    .then(() => {
+       toast({
+          title: 'Report Confirmed',
+          description: `Thank you for confirming the hazard at this location.`,
+        });
+    })
+    .catch((serverError: any) => {
+       const permissionError = new FirestorePermissionError({
+          path: spotRef.path,
+          operation: 'update',
+          requestResourceData: { report_count: "increment" },
+        });
+        errorEmitter.emit('permission-error', permissionError);
+    });
+    
+    setSpotToConfirm(null);
+  };
+  
+  const handleDeleteSpot = (spotId: string) => {
+    if (!db) return;
+    
+    const spotRef = doc(db, 'black_spots', spotId);
+    deleteDoc(spotRef)
+    .then(() => {
+        toast({
+          title: 'Spot Removed',
+          description: 'The accident-prone area has been removed from the map.',
+        });
+    })
+    .catch((serverError: any) => {
+        const permissionError = new FirestorePermissionError({
+            path: spotRef.path,
+            operation: 'delete',
+        });
+        errorEmitter.emit('permission-error', permissionError);
+    });
+  }
+
   const handleRouteDetails = (details: RouteDetails) => {
     if (details) {
       setRouteDetails(details);
@@ -221,7 +308,6 @@ export default function NaviSafeApp() {
       setIsRoutePlanned(false);
     }
   };
-
 
   const isHighRisk =
     safetyBriefing &&
@@ -245,7 +331,7 @@ export default function NaviSafeApp() {
           <AlertDialogHeader>
             <AlertDialogTitle>Add New Accident-Prone Area</AlertDialogTitle>
             <AlertDialogDescription>
-              You've marked a new location. Please provide the details for this
+              A valid road location has been selected. Please provide the details for this
               black spot.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -287,6 +373,34 @@ export default function NaviSafeApp() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleSaveNewSpot}>
               Save Spot
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+       <AlertDialog
+        open={!!spotToConfirm}
+        onOpenChange={() => setSpotToConfirm(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Hazard Area</AlertDialogTitle>
+            <AlertDialogDescription>
+              An accident-prone area has already been reported nearby. Do you want to
+              confirm this report? This will increase its visibility.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+           <Card className="text-sm bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-800">
+              <CardContent className="pt-4 space-y-1">
+                  <p><strong>Risk:</strong> {spotToConfirm?.risk_level}</p>
+                  <p><strong>Description:</strong> {spotToConfirm?.accident_history}</p>
+                  <p><strong>Current Reports:</strong> {spotToConfirm?.report_count}</p>
+              </CardContent>
+          </Card>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmIncrement}>
+              Yes, Confirm Report
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -409,10 +523,14 @@ export default function NaviSafeApp() {
                       : 'dark:border-slate-800'
                   }`}
                   onClick={() => setIsAddMode(!isAddMode)}
-                  disabled={isSearching}
+                  disabled={isSearching || isProcessingSpot}
                 >
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  {isAddMode ? 'Cancel' : 'Add Accident Area'}
+                  {isProcessingSpot ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                  )}
+                  {isAddMode ? 'Cancel' : isProcessingSpot ? 'Verifying...' : 'Add Accident Area'}
                 </Button>
                 {isAddMode && (
                   <div className="text-center text-xs text-slate-500 dark:text-slate-400 p-2 mt-2 bg-slate-50 dark:bg-slate-900 rounded-md border dark:border-slate-800">
@@ -451,7 +569,6 @@ export default function NaviSafeApp() {
                 </CardContent>
               </Card>
           )}
-
 
           {/* Safety Briefing Result */}
           {safetyBriefing && !isSearching && (
@@ -497,6 +614,7 @@ export default function NaviSafeApp() {
           blackSpots={blackSpots || []}
           travelMode={travelMode}
           onMapClick={handleMapClick}
+          onDeleteSpot={handleDeleteSpot}
           onSafetyBriefing={setSafetyBriefing}
           onRouteDetails={handleRouteDetails}
           onMapError={message => {

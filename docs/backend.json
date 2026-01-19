@@ -21,9 +21,13 @@
         "accident_history": {
           "type": "string",
           "description": "A brief description of the accident history."
+        },
+        "report_count": {
+          "type": "number",
+          "description": "The number of times this spot has been reported."
         }
       },
-      "required": ["lat", "lng", "risk_level", "accident_history"]
+      "required": ["lat", "lng", "risk_level", "accident_history", "report_count"]
     }
   },
   "auth": {

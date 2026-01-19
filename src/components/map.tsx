@@ -26,6 +26,7 @@ type MapProps = {
   onMapError: (message: string) => void;
   onLoading: (loading: boolean) => void;
   onMapClick: (latlng: { lat: number, lng: number }) => void;
+  onDeleteSpot: (spotId: string) => void;
 };
 
 const MapComponent = ({ 
@@ -39,7 +40,8 @@ const MapComponent = ({
   onRouteDetails,
   onMapError,
   onLoading,
-  onMapClick
+  onMapClick,
+  onDeleteSpot
 }: MapProps) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const leafletMap = useRef<L.Map | null>(null);
@@ -49,10 +51,14 @@ const MapComponent = ({
   const blackSpotsLayer = useRef<L.LayerGroup | null>(null);
   const userLocationMarker = useRef<L.Marker | null>(null);
 
-  // Use a ref to hold the latest onMapClick callback to prevent stale closures
   const onMapClickRef = useRef(onMapClick);
   useEffect(() => {
     onMapClickRef.current = onMapClick;
+  });
+
+  const onDeleteSpotRef = useRef(onDeleteSpot);
+  useEffect(() => {
+    onDeleteSpotRef.current = onDeleteSpot;
   });
 
   // Initialize map
@@ -67,16 +73,33 @@ const MapComponent = ({
         attribution: '&copy; OpenStreetMap contributors',
       }).addTo(leafletMap.current);
       
-      // Initialize black spots layer
       blackSpotsLayer.current = L.layerGroup().addTo(leafletMap.current);
 
       leafletMap.current.on('click', (e) => {
-        // Always call the latest version of the callback
         onMapClickRef.current(e.latlng);
+      });
+
+      // Handle delete clicks via event delegation on popup open
+      leafletMap.current.on('popupopen', (e) => {
+        const popupNode = e.popup.getElement();
+        if (!popupNode) return;
+
+        const deleteButton = popupNode.querySelector('.delete-spot-button') as HTMLButtonElement;
+        if (deleteButton) {
+          // Prevent leaflet from handling the click and closing the popup
+          L.DomEvent.on(deleteButton, 'click', L.DomEvent.stop);
+          
+          const spotId = deleteButton.dataset.spotId;
+          if (spotId) {
+            deleteButton.onclick = () => {
+              onDeleteSpotRef.current(spotId);
+              leafletMap.current?.closePopup();
+            };
+          }
+        }
       });
     }
     
-    // Cleanup on unmount
     const map = leafletMap.current;
     return () => {
       if (map) {
@@ -132,16 +155,20 @@ const MapComponent = ({
     
     blackSpots.forEach((spot) => {
       const color = spot.risk_level === 'High' ? '#ef4444' : '#f97316';
+      // Radius increases with reports, with a max
+      const radius = 8 + Math.min(spot.report_count, 10);
       L.circleMarker([spot.lat, spot.lng], {
-        radius: 12,
+        radius: radius,
         color: color,
         fillColor: color,
         fillOpacity: 0.6,
       })
       .bindPopup(`
-        <div class="p-2">
-          <h3 class="font-bold ${spot.risk_level === 'High' ? 'text-red-600' : 'text-orange-600'}">⚠️ ${spot.risk_level} Risk Zone</h3>
-          <p class="text-sm">${spot.accident_history}</p>
+        <div class="p-2 text-sm max-w-xs">
+          <h3 class="font-bold mb-1 ${spot.risk_level === 'High' ? 'text-red-600' : 'text-orange-600'}">⚠️ ${spot.risk_level} Risk Zone</h3>
+          <p class="mb-2">${spot.accident_history}</p>
+          <div class="text-xs text-slate-500 dark:text-slate-400 mb-2 border-t border-slate-200 dark:border-slate-700 pt-2">Reported by <strong>${spot.report_count}</strong> user(s).</div>
+          <button data-spot-id="${spot.id}" class="delete-spot-button w-full text-xs text-red-600 dark:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 p-1 rounded-md transition-colors">Remove Spot</button>
         </div>
       `)
       .addTo(blackSpotsLayer.current!);
@@ -151,7 +178,6 @@ const MapComponent = ({
   // Handle route search
   useEffect(() => {
     const fetchRoute = async () => {
-      // Do not fetch a route if either location is missing
       if ((typeof startLocation === 'string' && !startLocation.trim()) || !endLocation.trim()) {
         onRouteDetails(null);
         if (routeLayer.current && leafletMap.current) leafletMap.current.removeLayer(routeLayer.current);
@@ -167,7 +193,6 @@ const MapComponent = ({
       onRouteDetails(null);
       onMapError("");
 
-      // Clear previous route layers
       if (routeLayer.current) leafletMap.current.removeLayer(routeLayer.current);
       if (startMarker.current) leafletMap.current.removeLayer(startMarker.current);
       if (endMarker.current) leafletMap.current.removeLayer(endMarker.current);
@@ -191,10 +216,8 @@ const MapComponent = ({
         const sCoords: [number, number] = [startRes[0].y, startRes[0].x];
         const eCoords: [number, number] = [endRes[0].y, endRes[0].x];
         
-        // Use the correct OSRM profile based on travel mode
         const profile = travelMode === 'car' ? 'driving' : 'biking';
 
-        // Fetch route from OSRM
         const url = `https://router.project-osrm.org/route/v1/${profile}/${sCoords[1]},${sCoords[0]};${eCoords[1]},${eCoords[0]}?geometries=geojson`;
         const res = await fetch(url);
         const json = await res.json();
@@ -206,31 +229,25 @@ const MapComponent = ({
         const route = json.routes[0];
         const coordinates = route.geometry.coordinates.map((c: number[]) => [c[1], c[0]] as [number, number]);
 
-        // Pass details up to the parent component
         onRouteDetails({ distance: route.distance, duration: route.duration });
         
-        // Add new route polyline
         routeLayer.current = L.polyline(coordinates, { color: '#3b82f6', weight: 6 }).addTo(leafletMap.current);
         
-        // Add markers
         startMarker.current = L.marker(sCoords).addTo(leafletMap.current).bindPopup(startRes[0].label);
         endMarker.current = L.marker(eCoords).addTo(leafletMap.current).bindPopup(endRes[0].label);
 
-        // Fit map to bounds
         const bounds = L.latLngBounds(coordinates);
         leafletMap.current.fitBounds(bounds, { padding: [50, 50] });
 
-        // Collision Detection
         const detected = new Set<BlackSpot>();
         coordinates.forEach((point: [number, number], index: number) => {
-           if (index % 10 !== 0) return; // Optimization
+           if (index % 10 !== 0) return;
            blackSpots.forEach(spot => {
              const dist = haversineDistance({ lat: spot.lat, lon: spot.lng }, { lat: point[0], lon: point[1] });
              if (dist < COLLISION_THRESHOLD) detected.add(spot);
            });
         });
 
-        // Get AI Safety Briefing
         const briefing = await getSafetyBriefing(Array.from(detected));
         onSafetyBriefing(briefing);
 
@@ -244,7 +261,7 @@ const MapComponent = ({
 
     fetchRoute();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [startLocation, endLocation, travelMode]); // Removed blackspots dependency to avoid re-fetching on DB updates
+  }, [startLocation, endLocation, travelMode]);
 
   return <div ref={mapRef} className="h-full w-full z-0" />;
 };
