@@ -324,7 +324,15 @@ const MapComponent = ({
       return;
     }
 
-    // Draw alternative routes first (grey)
+    const selectedRoute = routes[selectedRouteIndex];
+
+    // Draw the selected route first, so it's underneath
+    if (selectedRoute) {
+      const coordinates = selectedRoute.geometry.coordinates.map((c: number[]) => [c[1], c[0]] as [number, number]);
+      L.polyline(coordinates, primaryRouteStyle).addTo(routeLayers.current!);
+    }
+
+    // Draw alternative routes on top, so they are clickable
     routes.forEach((route, index) => {
       if (index === selectedRouteIndex) return;
       const coordinates = route.geometry.coordinates.map((c: number[]) => [c[1], c[0]] as [number, number]);
@@ -333,14 +341,13 @@ const MapComponent = ({
         setSelectedRouteIndex(index);
       });
     });
-
-    // Draw primary route last (blue, on top)
-    const selectedRoute = routes[selectedRouteIndex];
-    if (!selectedRoute) return;
+    
+    if (!selectedRoute) {
+      onRouteDetails(null);
+      return;
+    }
 
     const coordinates = selectedRoute.geometry.coordinates.map((c: number[]) => [c[1], c[0]] as [number, number]);
-    const primaryPolyline = L.polyline(coordinates, primaryRouteStyle).addTo(routeLayers.current!);
-    
     const bounds = L.latLngBounds(coordinates);
     leafletMap.current.fitBounds(bounds, { padding: [50, 50] });
 
