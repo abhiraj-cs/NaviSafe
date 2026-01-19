@@ -3,9 +3,13 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
   
-    // Black spots can be read by anyone, and written by anyone.
+    // Allow public read and write access to black spots for demonstration.
+    // In a real application, you would want to restrict write access.
     match /black_spots/{spotId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow create: if true;
+      allow update: if true;
+      allow delete: if true;
     }
   }
 }
