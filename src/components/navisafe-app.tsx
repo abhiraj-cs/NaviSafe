@@ -35,6 +35,7 @@ import {
   Milestone,
   Play,
   X,
+  TextCursorInput,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useCollection } from '@/firebase/firestore/use-collection';
@@ -95,6 +96,10 @@ export default function NaviSafeApp() {
   const [locateUser, setLocateUser] = useState(false);
   const [startNavigation, setStartNavigation] = useState(false);
 
+  const [isCoordAddOpen, setIsCoordAddOpen] = useState(false);
+  const [coordLat, setCoordLat] = useState('');
+  const [coordLng, setCoordLng] = useState('');
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (isAddMode) setIsAddMode(false);
@@ -142,7 +147,11 @@ export default function NaviSafeApp() {
   };
 
   const handleMapClick = async (latlng: { lat: number; lng: number }) => {
-    if (!isAddMode || isProcessingSpot) return;
+    if (!isAddMode && !isCoordAddOpen) {
+       if (isProcessingSpot) return;
+    } else {
+        if (!isAddMode) return;
+    }
 
     setIsProcessingSpot(true);
     toast({
@@ -187,6 +196,27 @@ export default function NaviSafeApp() {
     } finally {
       setIsProcessingSpot(false);
     }
+  };
+  
+  const handleSubmitCoordinates = () => {
+    const lat = parseFloat(coordLat);
+    const lng = parseFloat(coordLng);
+
+    if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      toast({
+        variant: 'destructive',
+        title: 'Invalid Coordinates',
+        description: 'Please enter valid latitude (-90 to 90) and longitude (-180 to 180).',
+      });
+      return;
+    }
+
+    // A bit of a hack: set isAddMode to true so handleMapClick works, then reset it
+    setIsAddMode(true);
+    handleMapClick({ lat, lng });
+    setIsAddMode(false);
+
+    setIsCoordAddOpen(false); // Close the dialog
   };
 
   const handleLocateUser = () => {
@@ -392,6 +422,54 @@ export default function NaviSafeApp() {
         </AlertDialogContent>
       </AlertDialog>
 
+      <AlertDialog
+        open={isCoordAddOpen}
+        onOpenChange={(isOpen) => {
+          setIsCoordAddOpen(isOpen);
+          if (!isOpen) {
+            setCoordLat('');
+            setCoordLng('');
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Add Accident Area by Coordinates</AlertDialogTitle>
+            <AlertDialogDescription>
+              Enter the latitude and longitude of the accident-prone area.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="lat-input">Latitude</Label>
+              <Input
+                id="lat-input"
+                placeholder="e.g., 9.931233"
+                value={coordLat}
+                onChange={(e) => setCoordLat(e.target.value)}
+                type="number"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="lng-input">Longitude</Label>
+              <Input
+                id="lng-input"
+                placeholder="e.g., 76.267303"
+                value={coordLng}
+                onChange={(e) => setCoordLng(e.target.value)}
+                type="number"
+              />
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleSubmitCoordinates}>
+              Check Location
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
        <AlertDialog
         open={!!spotToConfirm}
         onOpenChange={() => setSpotToConfirm(null)}
@@ -529,23 +607,30 @@ export default function NaviSafeApp() {
                 <CardTitle className="text-base">Contribute Data</CardTitle>
               </CardHeader>
               <CardContent>
-                <Button
-                  variant="outline"
-                  className={`w-full transition-colors ${
-                    isAddMode
-                      ? 'bg-amber-100 dark:bg-amber-900/20 border-amber-400 dark:border-amber-600 text-amber-800 dark:text-amber-400'
-                      : 'dark:border-slate-800'
-                  }`}
-                  onClick={() => setIsAddMode(!isAddMode)}
-                  disabled={isSearching || isProcessingSpot}
-                >
-                  {isProcessingSpot ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                  )}
-                  {isAddMode ? 'Cancel' : isProcessingSpot ? 'Verifying...' : 'Add Accident Area'}
-                </Button>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    variant="outline"
+                    className={`w-full transition-colors ${
+                      isAddMode
+                        ? 'bg-amber-100 dark:bg-amber-900/20 border-amber-400 dark:border-amber-600 text-amber-800 dark:text-amber-400'
+                        : 'dark:border-slate-800'
+                    }`}
+                    onClick={() => setIsAddMode(!isAddMode)}
+                    disabled={isSearching || isProcessingSpot}
+                  >
+                    {isProcessingSpot ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : isAddMode ? <X className="mr-2 h-4 w-4" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+                    {isProcessingSpot ? 'Verifying...' : isAddMode ? 'Cancel' : 'Add on Map'}
+                  </Button>
+                   <Button
+                    variant="outline"
+                    className="w-full dark:border-slate-800"
+                    onClick={() => setIsCoordAddOpen(true)}
+                    disabled={isSearching || isProcessingSpot}
+                  >
+                    <TextCursorInput className="mr-2 h-4 w-4" />
+                    Add by Coords
+                  </Button>
+                </div>
                 {isAddMode && (
                   <div className="text-center text-xs text-slate-500 dark:text-slate-400 p-2 mt-2 bg-slate-50 dark:bg-slate-900 rounded-md border dark:border-slate-800">
                     Click a location on the map to add a new black spot.
