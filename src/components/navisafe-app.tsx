@@ -598,7 +598,7 @@ export default function NaviSafeApp() {
 
         {/* Footer */}
         <div className="p-4 border-t text-center text-xs text-slate-400 bg-slate-50 dark:bg-slate-950/50 dark:border-slate-800">
-          Powered by OpenStreetMap & AI Analytics
+          Powered By Group 2 S6C
         </div>
       </div>
 
