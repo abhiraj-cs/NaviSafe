@@ -304,7 +304,7 @@ export default function NaviSafeApp() {
           {/* Search Form */}
           <Card className="border-slate-200 dark:border-slate-800 shadow-sm bg-transparent">
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Enter Travel Mode</CardTitle>
+              <CardTitle className="text-base">Plan a Route</CardTitle>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSearch} className="space-y-4">
