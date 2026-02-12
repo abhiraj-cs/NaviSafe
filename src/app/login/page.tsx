@@ -8,12 +8,13 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Shield, User } from 'lucide-react';
+import { Shield, User, Navigation, Eye, EyeOff } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const { loginAsUser, loginAsAdmin } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
@@ -46,14 +47,19 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-slate-900">
+    <div className="relative flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-100 via-purple-100 to-pink-100 dark:from-slate-800 dark:via-slate-900 dark:to-black animated-gradient">
+      <div className="absolute top-6 right-6 flex items-center gap-2 text-slate-800 dark:text-slate-200">
+        <Navigation className="h-7 w-7 text-blue-500" />
+        <h1 className="text-xl font-bold">NaviSafe</h1>
+      </div>
+
       <Tabs defaultValue="user" className="w-full max-w-sm">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="user">User</TabsTrigger>
           <TabsTrigger value="admin">Admin</TabsTrigger>
         </TabsList>
         <TabsContent value="user">
-           <Card className="border-t-0 rounded-t-none">
+           <Card className="border-t-0 rounded-t-none bg-card/50 backdrop-blur-sm">
             <CardHeader className="text-center">
                 <div className="flex justify-center mb-4">
                     <User className="h-12 w-12 text-blue-600" />
@@ -69,13 +75,12 @@ export default function LoginPage() {
           </Card>
         </TabsContent>
         <TabsContent value="admin">
-          <Card className="border-t-0 rounded-t-none">
+          <Card className="border-t-0 rounded-t-none bg-card/50 backdrop-blur-sm">
             <CardHeader className="text-center">
                 <div className="flex justify-center mb-4">
                     <Shield className="h-12 w-12 text-blue-600" />
                 </div>
               <CardTitle>Admin Login</CardTitle>
-              <CardDescription>Enter your credentials to access admin features.</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleAdminLogin} className="space-y-4">
@@ -90,13 +95,26 @@ export default function LoginPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="password">Password</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      className="pr-10"
+                    />
+                     <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      <span className="sr-only">Toggle password visibility</span>
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
                 </div>
                 <Button type="submit" className="w-full">
                   Login
