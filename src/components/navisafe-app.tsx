@@ -74,7 +74,7 @@ type StopLocation = { lat: number; lng: number; name: string };
 
 export default function NaviSafeApp() {
   const { db } = useFirebase();
-  const { isAdmin, logout } = useAuth();
+  const { isLoggedIn, isAdmin, logout } = useAuth();
   
   const blackSpotsQuery = useMemo(() => (db ? collection(db, 'black_spots') : null), [db]);
   const { data: blackSpots, loading: blackSpotsLoading } = useCollection<BlackSpot>(
@@ -624,16 +624,16 @@ export default function NaviSafeApp() {
           </div>
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            {isAdmin ? (
+            {isLoggedIn ? (
               <Button variant="ghost" size="icon" onClick={logout} title="Logout">
                 <LogOut className="h-5 w-5" />
                 <span className="sr-only">Logout</span>
               </Button>
             ) : (
-              <Button asChild variant="ghost" size="icon" title="Admin Login">
+              <Button asChild variant="ghost" size="icon" title="Login">
                 <Link href="/login">
                   <LogIn className="h-5 w-5" />
-                  <span className="sr-only">Admin Login</span>
+                  <span className="sr-only">Login</span>
                 </Link>
               </Button>
             )}
@@ -740,7 +740,7 @@ export default function NaviSafeApp() {
                         : 'dark:border-slate-800'
                     }`}
                     onClick={() => setIsAddMode(!isAddMode)}
-                    disabled={isSearching || isProcessingSpot}
+                    disabled={isSearching || isProcessingSpot || !isLoggedIn}
                   >
                     {isProcessingSpot ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : isAddMode ? <X className="mr-2 h-4 w-4" /> : <PlusCircle className="mr-2 h-4 w-4" />}
                     {isProcessingSpot ? 'Verifying...' : isAddMode ? 'Cancel' : 'Add on Map'}
@@ -749,7 +749,7 @@ export default function NaviSafeApp() {
                     variant="outline"
                     className="w-full dark:border-slate-800"
                     onClick={() => setIsCoordAddOpen(true)}
-                    disabled={isSearching || isProcessingSpot}
+                    disabled={isSearching || isProcessingSpot || !isLoggedIn}
                   >
                     <TextCursorInput className="mr-2 h-4 w-4" />
                     Add by Coords
@@ -758,6 +758,11 @@ export default function NaviSafeApp() {
                 {isAddMode && (
                   <div className="text-center text-xs text-slate-500 dark:text-slate-400 p-2 mt-2 bg-slate-50 dark:bg-slate-900 rounded-md border dark:border-slate-800">
                     Click a location on the map to add a new black spot.
+                  </div>
+                )}
+                 {!isLoggedIn && (
+                  <div className="text-center text-xs text-slate-500 dark:text-slate-400 p-2 mt-2 bg-slate-50 dark:bg-slate-900 rounded-md border dark:border-slate-800">
+                    Please login to contribute data.
                   </div>
                 )}
               </CardContent>

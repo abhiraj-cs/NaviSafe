@@ -4,19 +4,28 @@ import { useRouter } from 'next/navigation';
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 
 interface AuthContextType {
+  isLoggedIn: boolean;
   isAdmin: boolean;
-  login: (user: string, pass: string) => boolean;
+  loginAsUser: () => void;
+  loginAsAdmin: (user: string, pass: string) => boolean;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const router = useRouter();
 
-  const login = (user: string, pass: string) => {
+  const loginAsUser = () => {
+    setIsLoggedIn(true);
+    setIsAdmin(false);
+  };
+
+  const loginAsAdmin = (user: string, pass: string) => {
     if (user === 'admin' && pass === 'admin@123') {
+      setIsLoggedIn(true);
       setIsAdmin(true);
       return true;
     }
@@ -24,12 +33,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
+    setIsLoggedIn(false);
     setIsAdmin(false);
     router.push('/');
   };
 
   return (
-    <AuthContext.Provider value={{ isAdmin, login, logout }}>
+    <AuthContext.Provider value={{ isLoggedIn, isAdmin, loginAsUser, loginAsAdmin, logout }}>
       {children}
     </AuthContext.Provider>
   );
